@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Centered Box with 10-Step Slider</title>
+  <style>
+    :root {
+      --accent: #3b82f6;
+      --track: #d1d5db;
+      --thumb: #111827;
+      --text: #111827;
+      --bg: #f8fafc;
+      --box-border: #111827;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    /* Page layout */
+    .page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;         /* vertical centering */
+      justify-content: center;     /* horizontal centering */
+      padding: 24px;
+    }
+
+    .stack {
+      width: min(1000px, 92vw);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+    }
+
+    /* Centered box */
+    .state-box {
+      margin-top: 50px; /* requested 50px margin above the box */
+      width: min(800px, 88vw);
+      padding: clamp(18px, 2.4vw, 32px);
+      text-align: center;
+      border: 2px solid var(--box-border); /* stroke/outline */
+      border-radius: 14px;
+      background: white;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.06), 0 3px 6px rgba(0,0,0,0.06);
+      font-size: clamp(18px, 2.6vw, 28px);
+      line-height: 1.35;
+    }
+
+    .state-meta {
+      font-size: clamp(12px, 1.6vw, 14px);
+      opacity: 0.75;
+      margin-top: 6px;
+    }
+
+    /* Long, centered slider */
+    .dial {
+      width: min(480px, 80vw);
+      height: min(480px, 80vw);
+      position: relative;
+      display: grid;
+      place-items: center;
+      margin-bottom: 8px;
+      touch-action: none; /* allow smooth pointer events */
+    }
+    .dial-track {
+      position: absolute;
+      inset: 10%;
+      border-radius: 50%;
+      border: 8px solid var(--track);
+      box-shadow: inset 0 0 0 2px rgba(0,0,0,0.06);
+      background: radial-gradient(circle at center, white 55%, transparent 56%);
+    }
+    .dial-ticks {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .dial-ticks .tick {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 2px;
+      height: 14px;
+      background: #6b7280;
+      border-radius: 1px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .dial-knob {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      background: var(--thumb);
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      transform: translate(-50%, -50%);
+      cursor: grab;
+      touch-action: none;
+    }
+    .dial-knob:active { cursor: grabbing; }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: min(1000px, 92vw); /* long */
+      height: 24px;             /* tall enough to be easy to drag */
+      background: transparent;
+    }
+
+    /* Track */
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      background: linear-gradient(var(--accent), var(--accent)) 0/0% 100% no-repeat, var(--track);
+      border-radius: 999px;
+    }
+    input[type="range"]::-moz-range-track {
+      height: 6px;
+      background: var(--track);
+      border-radius: 999px;
+    }
+
+    /* Thumb */
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      margin-top: -9px; /* center the 22px thumb on 6px track */
+      width: 22px;
+      height: 22px;
+      background: var(--thumb);
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      background: var(--thumb);
+      border: 2px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+      cursor: pointer;
+    }
+
+    /* Tick labels (1..10) */
+    .ticks {
+      position: relative;
+      width: min(1000px, 92vw);
+      height: 16px;
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      justify-items: center;
+      font-size: 12px;
+      color: #6b7280;
+      user-select: none;
+    }
+
+    /* Helper: focus ring */
+    input[type="range"]:focus-visible {
+      outline: none;
+      filter: drop-shadow(0 0 0.25rem rgba(59,130,246,0.6));
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="stack" aria-label="Centered content">
+
+      <div id="stateBox" class="state-box" role="status" aria-live="polite">
+        <div id="stateText">State 1 — Getting started ✨</div>
+        <div id="stateMeta" class="state-meta">Use the slider below to switch states (1/10).</div>
+      </div>
+
+      <div class="dial" id="dial" role="slider" tabindex="0" aria-label="Choose a state" aria-valuemin="1" aria-valuemax="10" aria-valuenow="1" aria-valuetext="State 1" >
+        <div class="dial-track"></div>
+        <div class="dial-ticks" aria-hidden="true"></div>
+        <div class="dial-knob" id="dialKnob"></div>
+      </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    (function() {
+      const boxText = document.getElementById('stateText');
+      const meta = document.getElementById('stateMeta');
+      const dial = document.getElementById('dial');
+      const knob = document.getElementById('dialKnob');
+      const ticksEl = document.querySelector('.dial-ticks');
+      const trackEl = document.querySelector('.dial-track');
+
+      // 👇 EDIT THIS LIST to control what appears in the box.
+      const states = [
+        'State 1 — Getting started ✨',
+        'State 2 — Warming up 🔆',
+        'State 3 — Finding momentum 🧭',
+        'State 4 — Making progress 📈',
+        'State 5 — Halfway there 🛣️',
+        'State 6 — Staying focused 🎯',
+        'State 7 — In the groove 🎵',
+        'State 8 — Nearly done 🧩',
+        'State 9 — Final checks ✅',
+        'State 10 — Complete! 🎉'
+      ];
+
+      let currentIndex = 0; // 0-based
+
+      // Angle helpers (degrees <-> radians)
+      const toDeg = (rad) => rad * 180 / Math.PI;
+      const toRad = (deg) => deg * Math.PI / 180;
+
+      // Returns angle with 0° at the TOP, increasing clockwise (0..360)
+      function angleFromCenter(clientX, clientY){
+        const rect = dial.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = clientX - cx;
+        const dy = clientY - cy;
+        let angle = toDeg(Math.atan2(dy, dx)); // -180..180, 0 on +X
+        angle = (angle + 450) % 360; // shift: +90 so 0 at top; make positive
+        return angle; // 0..359.999, clockwise
+      }
+
+      function indexFromAngle(angle){
+        const step = 360 / states.length;
+        return Math.round(angle / step) % states.length; // snap to nearest
+      }
+
+      function angleForIndex(i){
+        const step = 360 / states.length;
+        return (i * step) % 360; // 0..359
+      }
+
+      // Compute radius so the knob sits ON THE RING, not near the center
+      function computeRadius(){
+        const trackRect = trackEl.getBoundingClientRect();
+        const styles = getComputedStyle(trackEl);
+        const borderW = parseFloat(styles.borderWidth) || 0;
+        // Place the knob center along the middle of the ring (visually on the outside of the hole)
+        return trackRect.width / 2 - borderW / 2;
+      }
+
+      function placeKnob(angleTop){
+        const rect = dial.getBoundingClientRect();
+        const cx = rect.width / 2;
+        const cy = rect.height / 2;
+        const r = computeRadius();
+        const t = toRad(angleTop);
+        // With 0° at TOP, clockwise: x = cx + r*sin(t), y = cy - r*cos(t)
+        const x = cx + r * Math.sin(t);
+        const y = cy - r * Math.cos(t);
+        knob.style.left = x + 'px';
+        knob.style.top = y + 'px';
+      }
+
+      function renderTicks(){
+        ticksEl.innerHTML = '';
+        const step = 360 / states.length;
+        const r = computeRadius() - 10; // slightly inner than knob path
+        for(let i=0;i<states.length;i++){
+          const tick = document.createElement('div');
+          tick.className = 'tick';
+          const angle = toRad(i * step);
+          const rect = dial.getBoundingClientRect();
+          const cx = rect.width / 2;
+          const cy = rect.height / 2;
+          const x = cx + r * Math.sin(angle);
+          const y = cy - r * Math.cos(angle);
+          tick.style.left = x + 'px';
+          tick.style.top = y + 'px';
+          tick.style.transform = `translate(-50%, -50%) rotate(${i*step}deg)`;
+          ticksEl.appendChild(tick);
+        }
+      }
+
+      function announce(){
+        boxText.textContent = states[currentIndex];
+        meta.textContent = `Drag the circular slider to switch states (${currentIndex+1}/${states.length}).`;
+        dial.setAttribute('aria-valuemax', String(states.length));
+        dial.setAttribute('aria-valuenow', String(currentIndex+1));
+        dial.setAttribute('aria-valuetext', states[currentIndex]);
+      }
+
+      function setIndexFromAngle(angle){
+        currentIndex = indexFromAngle(angle);
+        placeKnob(angleForIndex(currentIndex));
+        announce();
+      }
+
+      function init(){
+        renderTicks();
+        currentIndex = 0;
+        placeKnob(angleForIndex(currentIndex));
+        announce();
+      }
+
+      // Pointer interactions (infinite: keep spinning)
+      let dragging = false;
+      function onPointerDown(e){
+        dragging = true; dial.setPointerCapture?.(e.pointerId);
+        const a = angleFromCenter(e.clientX, e.clientY);
+        setIndexFromAngle(a);
+        e.preventDefault();
+      }
+      function onPointerMove(e){
+        if(!dragging) return;
+        const a = angleFromCenter(e.clientX, e.clientY);
+        setIndexFromAngle(a);
+      }
+      function onPointerUp(){ dragging = false; }
+
+      dial.addEventListener('pointerdown', onPointerDown);
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
+
+      // Keyboard support (wraps)
+      dial.addEventListener('keydown', (e)=>{
+        let handled = false;
+        if(e.key === 'ArrowRight' || e.key === 'ArrowDown'){ currentIndex = (currentIndex + 1) % states.length; handled = true; }
+        if(e.key === 'ArrowLeft'  || e.key === 'ArrowUp'){ currentIndex = (currentIndex - 1 + states.length) % states.length; handled = true; }
+        if(handled){ placeKnob(angleForIndex(currentIndex)); announce(); e.preventDefault(); }
+      });
+
+      window.addEventListener('load', init);
+      window.addEventListener('resize', ()=>{ renderTicks(); placeKnob(angleForIndex(currentIndex)); });
+    })();
+  </script>
+</body>
+</html>
